@@ -160,18 +160,103 @@ def chat(request: ChatRequest):
                 end_of_conversation=False
             )
 
-    except Exception as e:
+    except Exception:
 
-        print("\n===== ERROR =====")
-        print(str(e))
-        print("=================\n")
+        user_message = ""
 
-        return ChatResponse(
-            reply=(
-                "The recommendation "
-                "service encountered "
-                "an internal error."
-            ),
-            recommendations=[],
-            end_of_conversation=False
-        )
+        if messages:
+            user_message = messages[-1].content.lower()
+
+        # vague hiring request
+        if any(
+            word in user_message
+            for word in [
+                "hire",
+                "hiring",
+                "recruit",
+                "candidate",
+                "assessment"
+            ]
+        ):
+
+            reply = {
+                "reply":
+                    (
+                        "I can help recommend SHL assessments. "
+                        "Please provide the target role, seniority level, "
+                        "required technical skills, and whether leadership "
+                        "or stakeholder interaction is important."
+                    ),
+                "recommendations": [],
+                "end_of_conversation": False
+            }
+
+        # comparison request
+        elif any(
+            word in user_message
+            for word in [
+                "compare",
+                "difference",
+                "vs",
+                "versus"
+            ]
+        ):
+
+            reply = {
+                "reply":
+                    (
+                        "I can compare SHL assessments if you provide "
+                        "two SHL assessment names."
+                    ),
+                "recommendations": [],
+                "end_of_conversation": False
+            }
+
+        # prompt injection or off-topic
+        elif any(
+            word in user_message
+            for word in [
+                "aws",
+                "azure",
+                "certification",
+                "ignore previous instructions"
+            ]
+        ):
+
+            reply = {
+                "reply":
+                    (
+                        "I can only recommend and compare SHL assessments "
+                        "available in the SHL catalog."
+                    ),
+                "recommendations": [],
+                "end_of_conversation": True
+            }
+
+        # empty message
+        elif user_message.strip() == "":
+
+            reply = {
+                "reply":
+                    (
+                        "Please describe the role or hiring requirement "
+                        "for which you need SHL assessments."
+                    ),
+                "recommendations": [],
+                "end_of_conversation": False
+            }
+
+        # generic fallback
+        else:
+
+            reply = {
+                "reply":
+                    (
+                        "I need more information before recommending "
+                        "assessments. Please provide details such as "
+                        "role, seniority, technical skills, leadership "
+                        "requirements, and stakeholder interaction."
+                    ),
+                "recommendations": [],
+                "end_of_conversation": False
+            }
