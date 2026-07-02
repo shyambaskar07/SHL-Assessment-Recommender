@@ -1,22 +1,9 @@
 import json
-import faiss
-import numpy as np
-from sentence_transformers import (
-    SentenceTransformer
-)
 
 
 class Retriever:
 
     def __init__(self):
-
-        self.model = SentenceTransformer(
-            "all-MiniLM-L6-v2"
-        )
-
-        self.index = faiss.read_index(
-            "data/faiss.index"
-        )
 
         with open(
             "data/catalog.json",
@@ -28,30 +15,67 @@ class Retriever:
     def retrieve(
         self,
         query,
-        top_k=5
+        top_k=10
     ):
 
-        query_embedding = self.model.encode(
-            [query]
+        query_words = set(
+            query.lower().split()
         )
 
-        query_embedding = np.array(
-            query_embedding,
-            dtype=np.float32
-        )
+        scored = []
 
-        distances, indices = (
-            self.index.search(
-                query_embedding,
-                top_k
-            )
+        for assessment in self.catalog:
+
+            text = (
+                (
+                    assessment.get(
+                        "name",
+                        ""
+                    )
+                    + " "
+                    + assessment.get(
+                        "description",
+                        ""
+                    )
+                    + " "
+                    + " ".join(
+                        assessment.get(
+                            "keys",
+                            []
+                        )
+                    )
+                )
+            ).lower()
+
+            score = 0
+
+            for word in query_words:
+                if word in text:
+                    score += 1
+
+            if score > 0:
+                scored.append(
+                    (
+                        score,
+                        assessment
+                    )
+                )
+
+        scored.sort(
+            key=lambda x: x[0],
+            reverse=True
         )
 
         results = []
 
-        for idx in indices[0]:
+        for score, assessment in scored[
+            :top_k
+        ]:
             results.append(
-                self.catalog[idx]
+                assessment
             )
+
+        if len(results) == 0:
+            results = self.catalog[:top_k]
 
         return results

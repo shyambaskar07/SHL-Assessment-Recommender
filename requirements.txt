@@ -2,8 +2,6 @@ fastapi
 uvicorn[standard]
 pydantic
 python-dotenv
-
-sentence-transformers
 faiss-cpu
 
 numpy
@@ -19,5 +17,3 @@ pytest
 httpx
 selenium
 webdriver-manager
-torch
-transformers
