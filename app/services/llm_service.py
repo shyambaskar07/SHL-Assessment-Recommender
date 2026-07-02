@@ -1,10 +1,8 @@
-import google.generativeai as genai
+from groq import Groq
 
-from app.config import GEMINI_API_KEY
-
-
-genai.configure(
-    api_key=GEMINI_API_KEY
+from app.config import (
+    GROQ_API_KEY,
+    GROQ_MODELS
 )
 
 
@@ -12,110 +10,61 @@ class LLMService:
 
     def __init__(self):
 
-        self.models = [
-
-            # Best quality
-            "gemini-2.5-flash",
-
-            # Slightly smaller version
-            "gemini-2.5-flash-lite",
-
-            # Gemini 2.0 family
-            "gemini-2.0-flash",
-            "gemini-2.0-flash-lite",
-
-            # Gemini 1.5 family
-            "gemini-1.5-flash",
-            "gemini-1.5-flash-8b",
-            "gemini-1.5-pro"
-        ]
+        self.client = Groq(
+            api_key=GROQ_API_KEY
+        )
 
     def generate(
         self,
         prompt
     ):
 
-        last_exception = None
+        last_error = None
 
-        for model_name in self.models:
+        for model in GROQ_MODELS:
 
             try:
 
                 print(
-                    f"\nTrying model: {model_name}"
+                    f"Trying model: {model}"
                 )
 
-                model = genai.GenerativeModel(
-                    model_name
+                response = (
+                    self.client.chat.completions.create(
+                        model=model,
+                        messages=[
+                            {
+                                "role": "user",
+                                "content": prompt
+                            }
+                        ],
+                        temperature=0
+                    )
                 )
 
-                response = model.generate_content(
-                    prompt
+                print(
+                    f"Using model: {model}"
                 )
 
-                if (
+                return (
                     response
-                    and hasattr(
-                        response,
-                        "text"
-                    )
-                    and response.text
-                    and response.text.strip()
-                ):
-
-                    print(
-                        f"Using model: {model_name}"
-                    )
-
-                    return response.text
+                    .choices[0]
+                    .message
+                    .content
+                )
 
             except Exception as e:
 
-                error_message = str(
-                    e
-                ).lower()
-
                 print(
-                    f"Model {model_name} failed:"
+                    f"{model} failed"
                 )
+
                 print(e)
 
-                last_exception = e
-
-                if (
-                    "429" in error_message
-                    or "quota" in error_message
-                    or "rate limit" in error_message
-                    or "resource exhausted" in error_message
-                ):
-
-                    print(
-                        "Quota exceeded."
-                    )
-                    print(
-                        "Trying next model..."
-                    )
-
-                    continue
-
-                if (
-                    "not found" in error_message
-                    or "unsupported" in error_message
-                    or "not available" in error_message
-                ):
-
-                    print(
-                        "Model unavailable."
-                    )
-                    print(
-                        "Trying next model..."
-                    )
-
-                    continue
+                last_error = e
 
                 continue
 
         raise Exception(
-            f"All Gemini models failed.\n"
-            f"Last error:\n{last_exception}"
+            f"All Groq models failed.\n{last_error}"
         )
