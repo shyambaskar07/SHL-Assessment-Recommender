@@ -1,0 +1,12 @@
+import json
+
+with open(
+    "data/catalog.json",
+    "r",
+    encoding="utf-8"
+) as f:
+    catalog = json.load(f)
+
+print(catalog[0].keys())
+print()
+print(catalog[0])

@@ -1,0 +1,13 @@
+venv/
+__pycache__/
+*.pyc
+
+.env
+
+data/faiss.index
+data/embeddings.npy
+
+.pytest_cache/
+
+.idea/
+.vscode/
