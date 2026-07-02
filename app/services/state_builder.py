@@ -22,7 +22,9 @@ class StateBuilder:
         prompt = f"""
 Extract hiring requirements from the conversation.
 
-Return ONLY a valid JSON object.
+Return ONLY valid JSON.
+
+If there are multiple roles, return a JSON array.
 
 Do NOT include:
 - markdown
@@ -65,7 +67,7 @@ Conversation:
         print("===========================\n")
 
         json_match = re.search(
-            r'\{.*\}',
+            r'(\[.*\]|\{.*\})',
             response,
             re.DOTALL
         )
@@ -78,6 +80,13 @@ Conversation:
         data = json.loads(
             json_match.group()
         )
+
+        # Handle multiple extracted roles
+        if isinstance(
+            data,
+            list
+        ):
+            data = data[0]
 
         technical_required = data.get(
             "technical_required"
