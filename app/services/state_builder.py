@@ -129,17 +129,11 @@ Conversation:
             leadership_required = False
 
         return ConversationState(
-            role=data.get(
-                "role"
-            ),
-            seniority=data.get(
-                "seniority"
-            ),
-            experience_years=data.get(
-                "experience_years"
-            ),
-            technical_required=technical_required,
-            communication_required=communication_required,
-            personality_required=personality_required,
-            leadership_required=leadership_required
+        role=data.get("role") or "General Hiring",
+        seniority=data.get("seniority") or "Graduate",
+        experience_years=data.get("experience_years"),
+        technical_required=technical_required,
+        communication_required=communication_required,
+        personality_required=personality_required,
+        leadership_required=leadership_required
         )

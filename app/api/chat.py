@@ -22,89 +22,155 @@ recommender = Recommender()
 )
 def chat(request: ChatRequest):
 
-    state = state_builder.build(
-        request.messages
-    )
+    try:
 
-    intent = intent_router.route(
-        state,
-        request.messages
-    )
+        if (
+            not request.messages
+            or len(request.messages) == 0
+        ):
+            return ChatResponse(
+                reply=(
+                    "Please provide hiring "
+                    "requirements."
+                ),
+                recommendations=[],
+                end_of_conversation=False
+            )
 
-    print("\n===== STATE =====")
-    print(state)
+        if (
+            request.messages[-1].content
+            is None
+        ):
+            return ChatResponse(
+                reply=(
+                    "Please provide hiring "
+                    "requirements."
+                ),
+                recommendations=[],
+                end_of_conversation=False
+            )
 
-    print("\n===== INTENT =====")
-    print(intent)
+        if (
+            request.messages[-1]
+            .content.strip()
+            == ""
+        ):
+            return ChatResponse(
+                reply=(
+                    "Please provide hiring "
+                    "requirements."
+                ),
+                recommendations=[],
+                end_of_conversation=False
+            )
 
-    if intent == "clarify":
-
-        question = clarifier.generate_question(
-            state
+        state = state_builder.build(
+            request.messages
         )
 
-        return ChatResponse(
-            reply=question,
-            recommendations=[],
-            end_of_conversation=False
+        intent = intent_router.route(
+            state,
+            request.messages
         )
 
-    elif intent == "recommend":
+        print("\n===== STATE =====")
+        print(state)
 
-        recommendations = recommender.recommend(
-            state
-        )
+        print("\n===== INTENT =====")
+        print(intent)
 
-        reply = (
-            f"Based on your requirements, "
-            f"I recommend the following "
-            f"SHL assessments for "
-            f"{state.role or 'the role'}."
-        )
+        if intent == "clarify":
 
-        return ChatResponse(
-            reply=reply,
-            recommendations=recommendations,
-            end_of_conversation=True
-        )
+            question = (
+                clarifier
+                .generate_question(
+                    state
+                )
+            )
 
-    elif intent == "compare":
+            return ChatResponse(
+                reply=question,
+                recommendations=[],
+                end_of_conversation=False
+            )
+
+        elif intent == "recommend":
+
+            recommendations = (
+                recommender
+                .recommend(
+                    state
+                )
+            )
+
+            reply = (
+                f"Based on your requirements, "
+                f"I recommend the following "
+                f"SHL assessments for "
+                f"{state.role or 'the role'}."
+            )
+
+            return ChatResponse(
+                reply=reply,
+                recommendations=recommendations,
+                end_of_conversation=True
+            )
+
+        elif intent == "compare":
+
+            return ChatResponse(
+                reply=(
+                    "Comparison between "
+                    "assessments will be "
+                    "supported in a future "
+                    "update."
+                ),
+                recommendations=[],
+                end_of_conversation=False
+            )
+
+        elif intent == "refine":
+
+            recommendations = (
+                recommender
+                .recommend(
+                    state
+                )
+            )
+
+            return ChatResponse(
+                reply=(
+                    "Updated recommendations "
+                    "based on your additional "
+                    "requirements."
+                ),
+                recommendations=recommendations,
+                end_of_conversation=False
+            )
+
+        else:
+
+            return ChatResponse(
+                reply=(
+                    "I can only recommend "
+                    "assessments available "
+                    "in the SHL catalog."
+                ),
+                recommendations=[],
+                end_of_conversation=False
+            )
+
+    except Exception as e:
+
+        print("\n===== ERROR =====")
+        print(str(e))
+        print("=================\n")
 
         return ChatResponse(
             reply=(
-                "Comparison feature "
-                "implemented in Batch 10. "
-                "Entity extraction for "
-                "assessment names will be "
-                "added next."
-            ),
-            recommendations=[],
-            end_of_conversation=False
-        )
-
-    elif intent == "refine":
-
-        recommendations = recommender.recommend(
-            state
-        )
-
-        return ChatResponse(
-            reply=(
-                "Updated recommendations "
-                "based on your additional "
-                "requirements."
-            ),
-            recommendations=recommendations,
-            end_of_conversation=False
-        )
-
-    else:
-
-        return ChatResponse(
-            reply=(
-                "I can only recommend "
-                "assessments available "
-                "in the SHL catalog."
+                "The recommendation "
+                "service encountered "
+                "an internal error."
             ),
             recommendations=[],
             end_of_conversation=False

@@ -48,21 +48,42 @@ class Recommender:
 
         query = " ".join(
             query_parts
+        ).strip()
+
+        if query == "":
+            query = (
+                "general hiring "
+                "assessment"
+            )
+
+        candidates = (
+            self.retriever.retrieve(
+                query=query,
+                top_k=30
+            )
         )
 
-        candidates = self.retriever.retrieve(
-            query=query,
-            top_k=30
-        )
+        if (
+            candidates is None
+            or len(candidates) == 0
+        ):
+            return []
 
         scored = []
 
         for item in candidates:
 
-            score = self.ranker.score(
-                item,
-                state
-            )
+            try:
+
+                score = (
+                    self.ranker.score(
+                        item,
+                        state
+                    )
+                )
+
+            except Exception:
+                score = 0
 
             scored.append(
                 (
