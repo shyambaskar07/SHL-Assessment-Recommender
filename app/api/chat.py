@@ -24,42 +24,19 @@ def chat(request: ChatRequest):
 
     try:
 
-        if (
-            not request.messages
-            or len(request.messages) == 0
-        ):
+        if not request.messages:
             return ChatResponse(
-                reply=(
-                    "Please provide hiring "
-                    "requirements."
-                ),
+                reply="Please provide hiring requirements.",
                 recommendations=[],
                 end_of_conversation=False
             )
 
         if (
-            request.messages[-1].content
-            is None
+            request.messages[-1].content is None
+            or request.messages[-1].content.strip() == ""
         ):
             return ChatResponse(
-                reply=(
-                    "Please provide hiring "
-                    "requirements."
-                ),
-                recommendations=[],
-                end_of_conversation=False
-            )
-
-        if (
-            request.messages[-1]
-            .content.strip()
-            == ""
-        ):
-            return ChatResponse(
-                reply=(
-                    "Please provide hiring "
-                    "requirements."
-                ),
+                reply="Please provide hiring requirements.",
                 recommendations=[],
                 end_of_conversation=False
             )
@@ -81,12 +58,7 @@ def chat(request: ChatRequest):
 
         if intent == "clarify":
 
-            question = (
-                clarifier
-                .generate_question(
-                    state
-                )
-            )
+            question = clarifier.generate_question(state)
 
             return ChatResponse(
                 reply=question,
@@ -96,22 +68,15 @@ def chat(request: ChatRequest):
 
         elif intent == "recommend":
 
-            recommendations = (
-                recommender
-                .recommend(
-                    state
-                )
-            )
-
-            reply = (
-                f"Based on your requirements, "
-                f"I recommend the following "
-                f"SHL assessments for "
-                f"{state.role or 'the role'}."
-            )
+            recommendations = recommender.recommend(state)
 
             return ChatResponse(
-                reply=reply,
+                reply=(
+                    f"Based on your requirements, "
+                    f"I recommend the following SHL "
+                    f"assessments for "
+                    f"{state.role or 'the role'}."
+                ),
                 recommendations=recommendations,
                 end_of_conversation=True
             )
@@ -120,10 +85,8 @@ def chat(request: ChatRequest):
 
             return ChatResponse(
                 reply=(
-                    "Comparison between "
-                    "assessments will be "
-                    "supported in a future "
-                    "update."
+                    "Comparison between assessments "
+                    "will be supported in a future update."
                 ),
                 recommendations=[],
                 end_of_conversation=False
@@ -131,18 +94,12 @@ def chat(request: ChatRequest):
 
         elif intent == "refine":
 
-            recommendations = (
-                recommender
-                .recommend(
-                    state
-                )
-            )
+            recommendations = recommender.recommend(state)
 
             return ChatResponse(
                 reply=(
-                    "Updated recommendations "
-                    "based on your additional "
-                    "requirements."
+                    "Updated recommendations based "
+                    "on your additional requirements."
                 ),
                 recommendations=recommendations,
                 end_of_conversation=False
@@ -152,22 +109,25 @@ def chat(request: ChatRequest):
 
             return ChatResponse(
                 reply=(
-                    "I can only recommend "
-                    "assessments available "
-                    "in the SHL catalog."
+                    "I can only recommend assessments "
+                    "available in the SHL catalog."
                 ),
                 recommendations=[],
                 end_of_conversation=False
             )
 
-    except Exception:
+    except Exception as e:
+
+        print("\n===== CHAT ERROR =====")
+        print(e)
 
         user_message = ""
 
-        if messages:
-            user_message = messages[-1].content.lower()
+        if request.messages:
+            user_message = (
+                request.messages[-1].content or ""
+            ).lower()
 
-        # vague hiring request
         if any(
             word in user_message
             for word in [
@@ -179,19 +139,13 @@ def chat(request: ChatRequest):
             ]
         ):
 
-            reply = {
-                "reply":
-                    (
-                        "I can help recommend SHL assessments. "
-                        "Please provide the target role, seniority level, "
-                        "required technical skills, and whether leadership "
-                        "or stakeholder interaction is important."
-                    ),
-                "recommendations": [],
-                "end_of_conversation": False
-            }
+            reply = (
+                "I can help recommend SHL assessments. "
+                "Please provide the target role, seniority level, "
+                "required technical skills, and whether leadership "
+                "or stakeholder interaction is important."
+            )
 
-        # comparison request
         elif any(
             word in user_message
             for word in [
@@ -202,17 +156,11 @@ def chat(request: ChatRequest):
             ]
         ):
 
-            reply = {
-                "reply":
-                    (
-                        "I can compare SHL assessments if you provide "
-                        "two SHL assessment names."
-                    ),
-                "recommendations": [],
-                "end_of_conversation": False
-            }
+            reply = (
+                "I can compare SHL assessments if you provide "
+                "two SHL assessment names."
+            )
 
-        # prompt injection or off-topic
         elif any(
             word in user_message
             for word in [
@@ -223,40 +171,29 @@ def chat(request: ChatRequest):
             ]
         ):
 
-            reply = {
-                "reply":
-                    (
-                        "I can only recommend and compare SHL assessments "
-                        "available in the SHL catalog."
-                    ),
-                "recommendations": [],
-                "end_of_conversation": True
-            }
+            reply = (
+                "I can only recommend and compare SHL assessments "
+                "available in the SHL catalog."
+            )
 
-        # empty message
         elif user_message.strip() == "":
 
-            reply = {
-                "reply":
-                    (
-                        "Please describe the role or hiring requirement "
-                        "for which you need SHL assessments."
-                    ),
-                "recommendations": [],
-                "end_of_conversation": False
-            }
+            reply = (
+                "Please describe the role or hiring requirement "
+                "for which you need SHL assessments."
+            )
 
-        # generic fallback
         else:
 
-            reply = {
-                "reply":
-                    (
-                        "I need more information before recommending "
-                        "assessments. Please provide details such as "
-                        "role, seniority, technical skills, leadership "
-                        "requirements, and stakeholder interaction."
-                    ),
-                "recommendations": [],
-                "end_of_conversation": False
-            }
+            reply = (
+                "I need more information before recommending "
+                "assessments. Please provide details such as "
+                "role, seniority, technical skills, leadership "
+                "requirements, and stakeholder interaction."
+            )
+
+        return ChatResponse(
+            reply=reply,
+            recommendations=[],
+            end_of_conversation=False
+        )
