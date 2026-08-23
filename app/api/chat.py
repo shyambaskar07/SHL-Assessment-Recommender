@@ -7,6 +7,8 @@ from app.services.state_builder import StateBuilder
 from app.services.intent_router import IntentRouter
 from app.services.clarification import ClarificationService
 from app.services.recommender import Recommender
+from app.services.comparator import Comparator
+from app.services.retriever import Retriever
 
 
 router = APIRouter()
@@ -15,6 +17,8 @@ state_builder = StateBuilder()
 intent_router = IntentRouter()
 clarifier = ClarificationService()
 recommender = Recommender()
+comparator = Comparator()
+retriever = Retriever()
 
 
 @router.post(
@@ -38,11 +42,9 @@ def chat(request: ChatRequest):
                 end_of_conversation=False
             )
 
-        last_message = request.messages[-1]
-
         if (
-            last_message.content is None
-            or last_message.content.strip() == ""
+            request.messages[-1].content
+            is None
         ):
             return ChatResponse(
                 reply=(
@@ -53,20 +55,150 @@ def chat(request: ChatRequest):
                 end_of_conversation=False
             )
 
-        state = state_builder.build(
+        if (
+            request.messages[-1]
+            .content.strip()
+            == ""
+        ):
+            return ChatResponse(
+                reply=(
+                    "Please provide hiring "
+                    "requirements."
+                ),
+                recommendations=[],
+                end_of_conversation=False
+            )
+
+        # Detect intent first
+        intent = intent_router.route(
+            None,
             request.messages
         )
 
-        intent = intent_router.route(
-            state,
+        print("\n===== INTENT =====")
+        print(intent)
+
+        # --------------------
+        # Comparison
+        # --------------------
+
+        if intent == "compare":
+
+            user_message = (
+                request.messages[-1]
+                .content
+            )
+
+            assessments = (
+                retriever.find_in_query(
+                    user_message
+                )
+            )
+
+            print(
+                "\n===== COMPARISON ASSESSMENTS ====="
+            )
+
+            for assessment in assessments:
+                print(
+                    assessment.get(
+                        "name",
+                        ""
+                    )
+                )
+
+            if len(assessments) < 2:
+
+                return ChatResponse(
+                    reply=(
+                        "I could not find two "
+                        "valid SHL assessments "
+                        "in the catalogue. "
+                        "Please provide the exact "
+                        "assessment names."
+                    ),
+                    recommendations=[],
+                    end_of_conversation=False
+                )
+
+            assessment1 = assessments[0]
+            assessment2 = assessments[1]
+
+            comparison = comparator.compare(
+                assessment1,
+                assessment2
+            )
+
+            a1 = comparison[
+                "assessment_1"
+            ]
+
+            a2 = comparison[
+                "assessment_2"
+            ]
+
+            reply = (
+                f"Comparison between "
+                f"{a1['name']} and "
+                f"{a2['name']}:\n\n"
+
+                f"1. Duration:\n"
+                f"- {a1['name']}: "
+                f"{a1['duration']}\n"
+                f"- {a2['name']}: "
+                f"{a2['duration']}\n\n"
+
+                f"2. Job Levels:\n"
+                f"- {a1['name']}: "
+                f"{', '.join(a1['job_levels'])}\n"
+                f"- {a2['name']}: "
+                f"{', '.join(a2['job_levels'])}\n\n"
+
+                f"3. Remote:\n"
+                f"- {a1['name']}: "
+                f"{a1['remote']}\n"
+                f"- {a2['name']}: "
+                f"{a2['remote']}\n\n"
+
+                f"4. Adaptive:\n"
+                f"- {a1['name']}: "
+                f"{a1['adaptive']}\n"
+                f"- {a2['name']}: "
+                f"{a2['adaptive']}\n\n"
+
+                f"5. Categories:\n"
+                f"- {a1['name']}: "
+                f"{', '.join(a1['categories'])}\n"
+                f"- {a2['name']}: "
+                f"{', '.join(a2['categories'])}\n\n"
+
+                f"6. Description:\n"
+                f"- {a1['name']}: "
+                f"{a1['description']}\n"
+                f"- {a2['name']}: "
+                f"{a2['description']}"
+            )
+
+            return ChatResponse(
+                reply=reply,
+                recommendations=[],
+                end_of_conversation=True
+            )
+
+        # --------------------
+        # Build state
+        # --------------------
+
+        state = state_builder.build(
             request.messages
         )
 
         print("\n===== STATE =====")
         print(state)
 
-        print("\n===== INTENT =====")
-        print(intent)
+        # --------------------
+        # Clarify
+        # --------------------
 
         if intent == "clarify":
 
@@ -82,6 +214,10 @@ def chat(request: ChatRequest):
                 recommendations=[],
                 end_of_conversation=False
             )
+
+        # --------------------
+        # Recommend
+        # --------------------
 
         elif intent == "recommend":
 
@@ -105,18 +241,9 @@ def chat(request: ChatRequest):
                 end_of_conversation=True
             )
 
-        elif intent == "compare":
-
-            return ChatResponse(
-                reply=(
-                    "Comparison between "
-                    "assessments will be "
-                    "supported in a future "
-                    "update."
-                ),
-                recommendations=[],
-                end_of_conversation=False
-            )
+        # --------------------
+        # Refine
+        # --------------------
 
         elif intent == "refine":
 
@@ -137,6 +264,22 @@ def chat(request: ChatRequest):
                 end_of_conversation=False
             )
 
+        # --------------------
+        # Refuse
+        # --------------------
+
+        elif intent == "refuse":
+
+            return ChatResponse(
+                reply=(
+                    "I can only recommend and "
+                    "compare SHL assessments "
+                    "available in the SHL catalogue."
+                ),
+                recommendations=[],
+                end_of_conversation=True
+            )
+
         else:
 
             return ChatResponse(
@@ -151,7 +294,10 @@ def chat(request: ChatRequest):
 
     except Exception as e:
 
-        print("\n===== CHAT ERROR =====")
+        print(
+            "\n===== CHAT ERROR ====="
+        )
+
         print(e)
 
         user_message = ""
@@ -164,7 +310,6 @@ def chat(request: ChatRequest):
                 .lower()
             )
 
-        # Vague hiring request
         if any(
             word in user_message
             for word in [
@@ -178,16 +323,17 @@ def chat(request: ChatRequest):
 
             return ChatResponse(
                 reply=(
-                    "I can help recommend SHL assessments. "
-                    "Please provide the target role, seniority level, "
-                    "required technical skills, and whether leadership "
-                    "or stakeholder interaction is important."
+                    "I can help recommend SHL "
+                    "assessments. Please provide "
+                    "the target role, seniority level, "
+                    "required technical skills, and "
+                    "whether leadership or stakeholder "
+                    "interaction is important."
                 ),
                 recommendations=[],
                 end_of_conversation=False
             )
 
-        # Comparison request
         elif any(
             word in user_message
             for word in [
@@ -200,14 +346,14 @@ def chat(request: ChatRequest):
 
             return ChatResponse(
                 reply=(
-                    "I can compare SHL assessments if you provide "
-                    "two SHL assessment names."
+                    "I can compare SHL assessments "
+                    "if you provide two SHL "
+                    "assessment names."
                 ),
                 recommendations=[],
                 end_of_conversation=False
             )
 
-        # Prompt injection / off-topic
         elif any(
             word in user_message
             for word in [
@@ -220,34 +366,36 @@ def chat(request: ChatRequest):
 
             return ChatResponse(
                 reply=(
-                    "I can only recommend and compare SHL assessments "
+                    "I can only recommend and "
+                    "compare SHL assessments "
                     "available in the SHL catalog."
                 ),
                 recommendations=[],
                 end_of_conversation=True
             )
 
-        # Empty message
         elif user_message.strip() == "":
 
             return ChatResponse(
                 reply=(
-                    "Please describe the role or hiring requirement "
-                    "for which you need SHL assessments."
+                    "Please describe the role or "
+                    "hiring requirement for which "
+                    "you need SHL assessments."
                 ),
                 recommendations=[],
                 end_of_conversation=False
             )
 
-        # Generic fallback
         else:
 
             return ChatResponse(
                 reply=(
-                    "I need more information before recommending "
-                    "assessments. Please provide details such as "
-                    "role, seniority, technical skills, leadership "
-                    "requirements, and stakeholder interaction."
+                    "I need more information before "
+                    "recommending assessments. Please "
+                    "provide details such as role, "
+                    "seniority, technical skills, "
+                    "leadership requirements, and "
+                    "stakeholder interaction."
                 ),
                 recommendations=[],
                 end_of_conversation=False
