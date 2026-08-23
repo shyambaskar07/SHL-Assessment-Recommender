@@ -14,10 +14,7 @@ class LLMService:
             api_key=GROQ_API_KEY
         )
 
-    def generate(
-        self,
-        prompt
-    ):
+    def generate(self, prompt):
 
         last_error = None
 
@@ -62,8 +59,6 @@ class LLMService:
                 print(e)
 
                 last_error = e
-
-                continue
 
         raise Exception(
             f"All Groq models failed.\n{last_error}"
