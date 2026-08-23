@@ -1,7 +1,18 @@
-from dotenv import load_dotenv
 import os
 
-load_dotenv()
+
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+
+GROQ_MODELS = [
+    "openai/gpt-oss-120b",
+    "openai/gpt-oss-20b"
+]
+
+
+MODEL_NAME = os.getenv(
+    "MODEL_NAME",
+    "openai/gpt-oss-120b"
+)
 
 EMBEDDING_MODEL = os.getenv(
     "EMBEDDING_MODEL",
@@ -11,23 +22,6 @@ EMBEDDING_MODEL = os.getenv(
 TOP_K = int(
     os.getenv(
         "TOP_K",
-        10
+        "10"
     )
 )
-
-GROQ_API_KEY = os.getenv(
-    "GROQ_API_KEY"
-)
-
-GROQ_MODELS = [
-
-    "llama-3.3-70b-versatile",
-
-    "llama-3.1-8b-instant",
-
-    "gemma2-9b-it",
-
-    "llama3-8b-8192",
-
-    "gemma-7b-it"
-]
