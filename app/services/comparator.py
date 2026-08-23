@@ -28,6 +28,12 @@ class Comparator:
                         ""
                     ),
 
+                "description":
+                    assessment1.get(
+                        "description",
+                        ""
+                    ),
+
                 "duration":
                     assessment1.get(
                         "duration",
@@ -64,6 +70,12 @@ class Comparator:
                 "name":
                     assessment2.get(
                         "name",
+                        ""
+                    ),
+
+                "description":
+                    assessment2.get(
+                        "description",
                         ""
                     ),
 
