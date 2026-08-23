@@ -80,3 +80,59 @@ class Retriever:
             results = self.catalog[:top_k]
 
         return results
+
+    def find_by_name(
+        self,
+        name
+    ):
+
+        if not name:
+            return None
+
+        target = name.strip().lower()
+
+        for assessment in self.catalog:
+
+            assessment_name = (
+                assessment.get(
+                    "name",
+                    ""
+                )
+                .strip()
+                .lower()
+            )
+
+            if assessment_name == target:
+                return assessment
+
+        return None
+
+    def find_in_query(
+        self,
+        query
+    ):
+
+        if not query:
+            return []
+
+        query = query.lower()
+
+        found = []
+
+        for assessment in self.catalog:
+
+            name = assessment.get(
+                "name",
+                ""
+            )
+
+            if not name:
+                continue
+
+            if name.lower() in query:
+
+                found.append(
+                    assessment
+                )
+
+        return found
